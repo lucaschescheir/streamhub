@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StreamHub – My Subscriptions</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1f232c; --border: #2a2f3a;
+    --text: #e8eaf0; --muted: #9aa1b1; --accent: #5b8cff; --good: #2fbf71; --live: #ff4d4f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; gap: 24px; padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; z-index: 10; }
+  header h1 { font-size: 20px; margin: 0; }
+  nav { display: flex; gap: 6px; }
+  nav button { background: none; border: none; color: var(--muted); font-size: 15px; padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+  nav button.active { background: var(--panel2); color: var(--text); }
+  main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+  .hidden { display: none !important; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .chip { border: 1px solid var(--border); background: var(--panel); color: var(--text); padding: 6px 12px; border-radius: 999px; cursor: pointer; font-size: 13px; user-select: none; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  select, input[type=text], input[type=search], input[type=password] { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+  button.btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
+  button.btn.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  label.check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--muted); cursor: pointer; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .notice { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; line-height: 1.5; }
+  .notice a { color: var(--accent); }
+
+  /* Services setup */
+  .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+  .svc { display: flex; gap: 10px; align-items: center; padding: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+  .svc.on { border-color: var(--good); background: #15261d; }
+  .svc input { width: 18px; height: 18px; accent-color: var(--good); }
+  .svc .tag { font-size: 11px; color: var(--muted); }
+  h2 { font-size: 17px; margin: 22px 0 10px; }
+
+  /* Catalog */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); display: flex; flex-direction: column; }
+  .card img.poster { width: 100%; aspect-ratio: 2/3; object-fit: cover; background: var(--panel2); display: block; }
+  .card .info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .card .title { font-size: 14px; font-weight: 600; line-height: 1.25; }
+  .card .meta { font-size: 12px; color: var(--muted); }
+  .logos { display: flex; gap: 4px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+  .logos img { width: 24px; height: 24px; border-radius: 5px; }
+  .noposter { width: 100%; aspect-ratio: 2/3; display: flex; align-items: center; justify-content: center; background: var(--panel2); color: var(--muted); font-size: 12px; padding: 8px; text-align: center; }
+  .more { display: block; margin: 20px auto; }
+
+  /* Sports */
+  .day { margin: 22px 0 8px; font-size: 15px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .game { display: grid; grid-template-columns: 90px 1fr auto; gap: 14px; align-items: center; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+  .game.watchable { border-left: 4px solid var(--good); }
+  .game.unwatchable { opacity: .7; }
+  .game .time { font-size: 14px; font-weight: 600; }
+  .game .league { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+  .teams { display: flex; flex-direction: column; gap: 4px; }
+  .team { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .team img { width: 22px; height: 22px; object-fit: contain; }
+  .team .score { margin-left: auto; font-weight: 700; padding-right: 12px; }
+  .where { text-align: right; max-width: 340px; }
+  .where .yes { color: var(--good); font-size: 13px; font-weight: 600; }
+  .where .no { color: var(--muted); font-size: 13px; }
+  .where .nets { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .badge-live { background: var(--live); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .empty { text-align: center; color: var(--muted); padding: 40px; }
+  .spinner { text-align: center; color: var(--muted); padding: 30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📺 StreamHub</h1>
+  <nav>
+    <button data-tab="catalog" class="active">What's On</button>
+    <button data-tab="sports">Sports</button>
+    <button data-tab="setup">My Services</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ SETUP ============ -->
+  <section id="tab-setup" class="hidden">
+    <h2>Which services do you subscribe to?</h2>
+    <p class="muted">Saved in this browser only. Nothing is sent anywhere except the catalog/schedule lookups.</p>
+    <div class="svc-grid" id="svcGrid"></div>
+
+    <h2>Region</h2>
+    <select id="region">
+      <option value="US">United States</option><option value="CA">Canada</option><option value="GB">United Kingdom</option>
+      <option value="AU">Australia</option><option value="IE">Ireland</option><option value="DE">Germany</option>
+      <option value="FR">France</option><option value="ES">Spain</option><option value="IT">Italy</option>
+      <option value="MX">Mexico</option><option value="BR">Brazil</option><option value="IN">India</option>
+    </select>
+    <p class="muted">Used for the movie/TV catalog. Sports broadcast info is US-based.</p>
+
+    <h2>TMDB key (for the movie &amp; TV catalog)</h2>
+    <div class="notice">
+      Streaming services don't publish their catalogs, so this app uses <b>The Movie Database (TMDB)</b>, which tracks
+      what's on each service (data from JustWatch). A key is free: create an account at
+      <a href="https://www.themoviedb.org/signup" target="_blank">themoviedb.org</a>, then go to
+      <a href="https://www.themoviedb.org/settings/api" target="_blank">Settings → API</a> and copy either the
+      <i>API Key</i> or the <i>API Read Access Token</i>. Sports schedules work without a key.
+    </div>
+    <div class="row">
+      <input type="password" id="tmdbKey" placeholder="Paste TMDB API key or read access token" style="width:420px">
+      <button class="btn" id="saveKey">Save key</button>
+      <span id="keyStatus" class="muted"></span>
+    </div>
+  </section>
+
+  <!-- ============ CATALOG ============ -->
+  <section id="tab-catalog">
+    <div id="catalogNeedsKey" class="notice hidden">
+      To browse movies and shows, add a free TMDB key in <a href="#" data-goto="setup">My Services</a>.
+    </div>
+    <div id="catalogUI">
+      <div class="row">
+        <input type="search" id="searchBox" placeholder="Search a title to see where you can watch it…" style="flex:1;min-width:260px">
+        <button class="btn" id="searchBtn">Search</button>
+        <button class="btn secondary hidden" id="clearSearch">Back to browsing</button>
+      </div>
+      <div id="browseControls">
+        <div class="row" id="catSvcChips"></div>
+        <div class="row">
+          <select id="mediaType"><option value="movie">Movies</option><option value="tv">TV Shows</option></select>
+          <select id="genre"><option value="">All genres</option></select>
+          <select id="sort">
+            <option value="popularity.desc">Most popular</option>
+            <option value="vote_average.desc">Top rated</option>
+            <option value="primary_release_date.desc">Newest</option>
+          </select>
+          <span class="muted" id="catCount"></span>
+        </div>
+      </div>
+      <div class="grid" id="catalogGrid"></div>
+      <div id="catalogStatus"></div>
+      <button class="btn secondary more hidden" id="loadMore">Load more</button>
+    </div>
+  </section>
+
+  <!-- ============ SPORTS ============ -->
+  <section id="tab-sports" class="hidden">
+    <div class="row" id="leagueChips"></div>
+    <div class="row">
+      <select id="sportsRange">
+        <option value="1">Today</option><option value="3">Next 3 days</option>
+        <option value="7" selected>Next 7 days</option><option value="14">Next 14 days</option>
+      </select>
+      <input type="search" id="teamFilter" placeholder="Filter by team…">
+      <label class="check"><input type="checkbox" id="onlyMine"> Only games I can watch</label>
+      <label class="check"><input type="checkbox" id="showFinal"> Show finished games</label>
+      <button class="btn secondary" id="refreshSports">Refresh</button>
+    </div>
+    <p class="muted">Broadcast info from ESPN. Live TV services (YouTube TV, Hulu + Live TV, Fubo, Sling) vary by market, and regional sports networks / blackouts aren't accounted for.</p>
+    <div id="sportsList"></div>
+  </section>
+</main>
+
+<script>
+/* ---------------------------------------------------------------
+   Service definitions
+   tmdb: provider names as TMDB lists them (matched case-insensitively)
+   nets: ESPN broadcast names this service lets you watch (lowercase)
+---------------------------------------------------------------- */
+const LOCAL = ['abc','cbs','nbc','fox'];
+const SERVICES = [
+  { id:'netflix',   name:'Netflix',          tmdb:['Netflix','Netflix Standard with Ads'], nets:['netflix'] },
+  { id:'prime',     name:'Prime Video',      tmdb:['Amazon Prime Video','Amazon Prime Video with Ads'], nets:['prime video','amazon prime video','amazon','prime video (local)'] },
+  { id:'disney',    name:'Disney+',          tmdb:['Disney Plus'], nets:['disney+'] },
+  { id:'hulu',      name:'Hulu',             tmdb:['Hulu'], nets:['hulu'] },
+  { id:'max',       name:'HBO Max',          tmdb:['HBO Max','Max','Max Amazon Channel'], nets:['tnt','tbs','trutv','hbo max','max'] },
+  { id:'apple',     name:'Apple TV',         tmdb:['Apple TV Plus','Apple TV+','Apple TV'], nets:['apple tv','apple tv+','mls season pass'] },
+  { id:'paramount', name:'Paramount+',       tmdb:['Paramount Plus','Paramount+','Paramount Plus Premium','Paramount Plus Essential'], nets:['cbs','paramount+','paramount+ ','cbs sports golazo'] },
+  { id:'peacock',   name:'Peacock',          tmdb:['Peacock Premium','Peacock Premium Plus','Peacock'], nets:['nbc','peacock','nbc sports'] },
+  { id:'espn',      name:'ESPN (Unlimited)', tag:'ESPN streaming incl. ESPN+', tmdb:['ESPN Plus','ESPN+'], nets:['espn','espn2','espnu','espn+','espnews','abc','secn','sec network','accn','acc network','espn unlimited','espn deportes','sec network+','acc network extra','longhorn network','espn3'] },
+  { id:'foxone',    name:'Fox One',          tmdb:['Fox One'], nets:['fox','fs1','fs2','btn','big ten network','fox deportes','fox one'] },
+  { id:'nflplus',   name:'NFL+ Premium',     nets:['nfl net','nfl network','nfl+','nfl redzone'] },
+  { id:'nbalp',     name:'NBA League Pass',  nets:['nba tv','nba league pass'] },
+  { id:'mlbtv',     name:'MLB.TV',           nets:['mlb.tv','mlb network'] },
+  { id:'dazn',      name:'DAZN',             tmdb:['DAZN'], nets:['dazn'] },
+  { id:'ytv',       name:'YouTube TV',       tag:'Live TV', tmdb:[], nets:[...LOCAL,'espn','espn2','espnu','espnews','secn','accn','fs1','fs2','btn','tnt','tbs','trutv','nfl net','nba tv','mlb network','nhl network','nhl net','nbcsn','usa net','cbssn','cbs sports network','golf','cw','the cw','cw network','nfl redzone'] },
+  { id:'hululive',  name:'Hulu + Live TV',   tag:'Live TV (incl. ESPN Unlimited)', tmdb:['Hulu'], nets:[...LOCAL,'espn','espn2','espnu','espnews','espn+','secn','accn','fs1','fs2','btn','tnt','tbs','trutv','usa net','cbssn','cbs sports network','golf','nfl net','cw','the cw','cw network'] },
+  { id:'fubo',      name:'Fubo',             tag:'Live TV', tmdb:[], nets:[...LOCAL,'espn','espn2','espnu','espnews','secn','accn','fs1','fs2','btn','nfl net','nba tv','nhl network','nhl net','nbcsn','mlb network','usa net','cbssn','cbs sports network','golf','beIN sports','cw','the cw'] },
+  { id:'slingorange', name:'Sling Orange',   tag:'Live TV', tmdb:[], nets:['espn','espn2','espn3','tnt','tbs','trutv','accn','secn','nba tv'] },
+  { id:'slingblue', name:'Sling Blue',       tag:'Live TV (FOX/NBC in some markets)', tmdb:[], nets:['fs1','nfl net','usa net','tnt','tbs','trutv','fox','nbc'] },
+];
+
+const LEAGUES = [
+  { id:'nfl',   label:'NFL',          path:'football/nfl' },
+  { id:'cfb',   label:'College FB',   path:'football/college-football' },
+  { id:'nba',   label:'NBA',          path:'basketball/nba' },
+  { id:'wnba',  label:'WNBA',         path:'basketball/wnba' },
+  { id:'cbb',   label:'College BB',   path:'basketball/mens-college-basketball' },
+  { id:'nhl',   label:'NHL',          path:'hockey/nhl' },
+  { id:'mlb',   label:'MLB',          path:'baseball/mlb' },
+  { id:'mls',   label:'MLS',          path:'soccer/usa.1' },
+  { id:'epl',   label:'Premier League', path:'soccer/eng.1' },
+  { id:'ucl',   label:'Champions League', path:'soccer/uefa.champions' },
+  { id:'laliga',label:'La Liga',      path:'soccer/esp.1' },
+];
+
+/* ---------------- State ---------------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('sh_' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { localStorage.setItem('sh_' + k, JSON.stringify(v)); }
+};
+const state = {
+  mine: new Set(store.get('mine', [])),
+  region: store.get('region', 'US'),
+  key: store.get('tmdbKey', ''),
+  leagues: new Set(store.get('leagues', ['nfl','nba','nhl','cfb'])),
+  catFilter: new Set(),     // subset of my services to show in catalog (empty = all mine)
+  providers: null,          // TMDB providers list for region
+  genres: {},
+  page: 1, totalPages: 1, searching: false,
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------------- Tabs ---------------- */
+function showTab(name) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  ['setup','catalog','sports'].forEach(t => $('#tab-' + t).classList.toggle('hidden', t !== name));
+  if (name === 'catalog') initCatalog();
+  if (name === 'sports') loadSports();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+document.addEventListener('click', e => { const g = e.target.closest('[data-goto]'); if (g) { e.preventDefault(); showTab(g.dataset.goto); } });
+
+/* ---------------- Setup ---------------- */
+function renderSetup() {
+  $('#svcGrid').innerHTML = SERVICES.map(s => `
+    <label class="svc ${state.mine.has(s.id) ? 'on' : ''}">
+      <input type="checkbox" data-svc="${s.id}" ${state.mine.has(s.id) ? 'checked' : ''}>
+      <div><div>${esc(s.name)}</div>${s.tag ? `<div class="tag">${esc(s.tag)}</div>` : ''}</div>
+    </label>`).join('');
+  $('#svcGrid').querySelectorAll('input').forEach(i => i.onchange = () => {
+    i.checked ? state.mine.add(i.dataset.svc) : state.mine.delete(i.dataset.svc);
+    i.closest('.svc').classList.toggle('on', i.checked);
+    store.set('mine', [...state.mine]);
+    state.catFilter.clear(); catalogDirty = true;
+  });
+  $('#region').value = state.region;
+  $('#tmdbKey').value = state.key;
+  $('#keyStatus').textContent = state.key ? 'Key saved.' : '';
+}
+$('#region').onchange = e => { state.region = e.target.value; store.set('region', state.region); state.providers = null; catalogDirty = true; };
+$('#saveKey').onclick = async () => {
+  state.key = $('#tmdbKey').value.trim(); store.set('tmdbKey', state.key);
+  $('#keyStatus').textContent = 'Checking…';
+  try { await tmdb('/configuration'); $('#keyStatus').textContent = '✓ Key works.'; state.providers = null; catalogDirty = true; }
+  catch (e) { $('#keyStatus').textContent = '✗ ' + e.message; }
+};
+
+/* ---------------- TMDB ---------------- */
+async function tmdb(path, params = {}) {
+  const url = new URL('https://api.themoviedb.org/3' + path);
+  const headers = { accept: 'application/json' };
+  if (state.key.length > 60) headers.Authorization = 'Bearer ' + state.key; // read access token (JWT)
+  else url.searchParams.set('api_key', state.key);
+  for (const [k, v] of Object.entries(params)) if (v !== '' && v != null) url.searchParams.set(k, v);
+  const r = await fetch(url, { headers });
+  if (!r.ok) throw new Error(r.status === 401 ? 'Invalid TMDB key' : 'TMDB error ' + r.status);
+  return r.json();
+}
+
+async function loadProviders() {
+  if (state.providers) return;
+  const [m, t] = await Promise.all([
+    tmdb('/watch/providers/movie', { watch_region: state.region }),
+    tmdb('/watch/providers/tv', { watch_region: state.region }),
+  ]);
+  const byName = {};
+  for (const p of [...m.results, ...t.results]) byName[p.provider_name.toLowerCase()] = p;
+  // service id -> [tmdb provider objects]
+  state.providers = {};
+  for (const s of SERVICES) {
+    state.providers[s.id] = (s.tmdb || []).map(n => byName[n.toLowerCase()]).filter(Boolean)
+      .filter((p, i, a) => a.findIndex(x => x.provider_id === p.provider_id) === i);
+  }
+}
+const myProviderIds = (ids = [...state.mine]) => [...new Set(ids.flatMap(id => (state.providers[id] || []).map(p => p.provider_id)))];
+const providerToService = pid => SERVICES.find(s => state.mine.has(s.id) && (state.providers[s.id] || []).some(p => p.provider_id === pid));
+
+/* ---------------- Catalog ---------------- */
+let catalogDirty = true;
+async function initCatalog() {
+  const hasKey = !!state.key;
+  $('#catalogNeedsKey').classList.toggle('hidden', hasKey);
+  $('#catalogUI').classList.toggle('hidden', !hasKey);
+  if (!hasKey || !catalogDirty) return;
+  catalogDirty = false;
+  try {
+    await loadProviders();
+    await loadGenres();
+    renderCatChips();
+    state.searching = false; resetSearchUI();
+    await loadCatalog(true);
+  } catch (e) { $('#catalogStatus').innerHTML = `<div class="empty">${esc(e.message)}</div>`; catalogDirty = true; }
+}
+
+function renderCatChips() {
+  const mine = SERVICES.filter(s => state.mine.has(s.id) && state.providers[s.id]?.length);
+  if (!mine.length) { $('#catSvcChips').innerHTML = `<span class="muted">No catalog-capable services selected. Pick some in <a href="#" data-goto="setup" style="color:var(--accent)">My Services</a>.</span>`; return; }
+  $('#catSvcChips').innerHTML = `<span class="chip ${state.catFilter.size ? '' : 'on'}" data-cat="__all">All my services</span>` +
+    mine.map(s => `<span class="chip ${state.catFilter.has(s.id) ? 'on' : ''}" data-cat="${s.id}">${esc(s.name)}</span>`).join('');
+  $('#catSvcChips').querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    const id = c.dataset.cat;
+    if (id === '__all') state.catFilter.clear();
+    else state.catFilter.has(id) ? state.catFilter.delete(id) : state.catFilter.add(id);
+    renderCatChips(); loadCatalog(true);
+  });
+}
+
+async function loadGenres() {
+  const type = $('#mediaType').value;
+  if (!state.genres[type]) state.genres[type] = (await tmdb(`/genre/${type}/list`)).genres;
+  const cur = $('#genre').value;
+  $('#genre').innerHTML = '<option value="">All genres</option>' + state.genres[type].map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+  $('#genre').value = state.genres[type].some(g => String(g.id) === cur) ? cur : '';
+}
+
+function logosFor(providerList) {
+  return providerList.map(p => `<img src="https://image.tmdb.org/t/p/w92${p.logo_path}" title="${esc(p.provider_name)}" alt="${esc(p.provider_name)}">`).join('');
+}
+
+function cardHTML(item, type, logos = '') {
+  const title = item.title || item.name;
+  const date = (item.release_date || item.first_air_date || '').slice(0, 4);
+  const poster = item.poster_path
+    ? `<img class="poster" loading="lazy" src="https://image.tmdb.org/t/p/w342${item.poster_path}" alt="">`
+    : `<div class="noposter">${esc(title)}</div>`;
+  const link = `https://www.themoviedb.org/${type}/${item.id}/watch?locale=${state.region}`;
+  return `<a class="card" href="${link}" target="_blank" style="color:inherit;text-decoration:none" title="${esc(item.overview || '')}">
+    ${poster}
+    <div class="info">
+      <div class="title">${esc(title)}</div>
+      <div class="meta">${type === 'tv' ? 'TV' : 'Movie'}${date ? ' · ' + date : ''}${item.vote_average ? ' · ★ ' + item.vote_average.toFixed(1) : ''}</div>
+      <div class="logos">${logos}</div>
+    </div></a>`;
+}
+
+let catalogReq = 0;
+async function loadCatalog(reset) {
+  if (reset) { state.page = 1; $('#catalogGrid').innerHTML = ''; }
+  const ids = myProviderIds(state.catFilter.size ? [...state.catFilter] : [...state.mine]);
+  if (!ids.length) { $('#catalogStatus').innerHTML = '<div class="empty">Select services in My Services to see what\'s available.</div>'; $('#loadMore').classList.add('hidden'); $('#catCount').textContent=''; return; }
+  const req = ++catalogReq;
+  $('#catalogStatus').innerHTML = '<div class="spinner">Loading…</div>';
+  const type = $('#mediaType').value;
+  let sort = $('#sort').value;
+  if (type === 'tv' && sort.startsWith('primary_release_date')) sort = 'first_air_date.desc';
+  const params = {
+    watch_region: state.region, with_watch_providers: ids.join('|'), with_watch_monetization_types: 'flatrate|ads|free',
+    sort_by: sort, with_genres: $('#genre').value, page: state.page, include_adult: false,
+  };
+  if (sort.startsWith('vote_average')) params['vote_count.gte'] = 300;
+  if (sort.includes('date')) params[type === 'tv' ? 'first_air_date.lte' : 'primary_release_date.lte'] = new Date().toISOString().slice(0, 10);
+  try {
+    const data = await tmdb(`/discover/${type}`, params);
+    if (req !== catalogReq) return;
+    state.totalPages = Math.min(data.total_pages, 500);
+    $('#catCount').textContent = `${data.total_results.toLocaleString()} titles available`;
+    $('#catalogGrid').insertAdjacentHTML('beforeend', data.results.map(i => cardHTML(i, type)).join(''));
+    $('#catalogStatus').innerHTML = data.results.length ? '' : '<div class="empty">Nothing found.</div>';
+    $('#loadMore').classList.toggle('hidden', state.page >= state.totalPages);
+    // Fill in which of my services each title is on (cheap: one call per title, done in background)
+    annotateProviders(data.results, type, req);
+  } catch (e) { $('#catalogStatus').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+async function annotateProviders(items, type, req) {
+  const cards = [...$('#catalogGrid').querySelectorAll('.card')].slice(-items.length);
+  await Promise.all(items.map(async (item, i) => {
+    try {
+      const wp = (await tmdb(`/${type}/${item.id}/watch/providers`)).results[state.region];
+      if (req !== catalogReq || !wp) return;
+      const all = [...(wp.flatrate || []), ...(wp.ads || []), ...(wp.free || [])];
+      const mine = all.filter(p => providerToService(p.provider_id)).filter((p, j, a) => a.findIndex(x => x.provider_id === p.provider_id) === j);
+      cards[i].querySelector('.logos').innerHTML = logosFor(mine);
+    } catch {}
+  }));
+}
+
+$('#mediaType').onchange = async () => { await loadGenres(); loadCatalog(true); };
+$('#genre').onchange = () => loadCatalog(true);
+$('#sort').onchange = () => loadCatalog(true);
+$('#loadMore').onclick = () => { state.page++; state.searching ? doSearch(false) : loadCatalog(false); };
+
+/* ---- Search: where can I watch X? ---- */
+function resetSearchUI() {
+  $('#browseControls').classList.toggle('hidden', state.searching);
+  $('#clearSearch').classList.toggle('hidden', !state.searching);
+}
+async function doSearch(reset = true) {
+  const q = $('#searchBox').value.trim();
+  if (!q) return;
+  await loadProviders();
+  state.searching = true; resetSearchUI();
+  if (reset) { state.page = 1; $('#catalogGrid').innerHTML = ''; }
+  const req = ++catalogReq;
+  $('#catalogStatus').innerHTML = '<div class="spinner">Searching…</div>';
+  try {
+    const data = await tmdb('/search/multi', { query: q, page: state.page, include_adult: false });
+    if (req !== catalogReq) return;
+    const results = data.results.filter(r => r.media_type === 'movie' || r.media_type === 'tv');
+    const html = await Promise.all(results.map(async r => {
+      let logos = '', note = '';
+      try {
+        const wp = (await tmdb(`/${r.media_type}/${r.id}/watch/providers`)).results[state.region];
+        const all = wp ? [...(wp.flatrate || []), ...(wp.ads || []), ...(wp.free || [])] : [];
+        const mine = all.filter(p => providerToService(p.provider_id));
+        const others = all.filter(p => !providerToService(p.provider_id));
+        logos = mine.length ? logosFor(mine) : '';
+        note = mine.length ? '' : others.length ? `<span class="muted">Not on yours · on ${esc(others.slice(0,2).map(p=>p.provider_name).join(', '))}</span>` : '<span class="muted">Not streaming</span>';
+      } catch {}
+      return cardHTML(r, r.media_type, logos + note);
+    }));
+    $('#catalogGrid').insertAdjacentHTML('beforeend', html.join(''));
+    $('#catalogStatus').innerHTML = results.length ? '' : '<div class="empty">No matches.</div>';
+    $('#loadMore').classList.toggle('hidden', state.page >= data.total_pages);
+  } catch (e) { $('#catalogStatus').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+$('#searchBtn').onclick = () => doSearch(true);
+$('#searchBox').onkeydown = e => { if (e.key === 'Enter') doSearch(true); };
+$('#clearSearch').onclick = () => { $('#searchBox').value = ''; state.searching = false; resetSearchUI(); loadCatalog(true); };
+
+/* ---------------- Sports ---------------- */
+function renderLeagueChips() {
+  $('#leagueChips').innerHTML = LEAGUES.map(l => `<span class="chip ${state.leagues.has(l.id) ? 'on' : ''}" data-league="${l.id}">${esc(l.label)}</span>`).join('');
+  $('#leagueChips').querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    const id = c.dataset.league;
+    state.leagues.has(id) ? state.leagues.delete(id) : state.leagues.add(id);
+    store.set('leagues', [...state.leagues]); renderLeagueChips(); loadSports(true);
+  });
+}
+
+const ymd = d => d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+let sportsCache = null, sportsKey = '';
+
+const dayCache = new Map(); // "path|yyyymmdd" -> { t, events }
+async function fetchDay(l, d) {
+  const k = l.path + '|' + ymd(d);
+  const hit = dayCache.get(k);
+  if (hit && Date.now() - hit.t < 60e3) return hit.events;
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${l.path}/scoreboard?dates=${ymd(d)}&limit=500`
+    + (l.id === 'cbb' ? '&groups=50' : ''); // all D-I men's basketball, not just top games
+  const r = await fetch(url);
+  const events = r.ok ? ((await r.json()).events || []) : [];
+  dayCache.set(k, { t: Date.now(), events });
+  return events;
+}
+
+async function fetchLeague(l, start, end) {
+  const days = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(new Date(d));
+  const events = (await Promise.all(days.map(d => fetchDay(l, d).catch(() => [])))).flat()
+    .filter((ev, i, a) => a.findIndex(x => x.id === ev.id) === i);
+  return events.map(ev => {
+    const c = ev.competitions?.[0] || {};
+    const nets = new Set();
+    (c.broadcasts || []).forEach(b => (b.names || []).forEach(n => nets.add(n)));
+    (c.geoBroadcasts || []).forEach(b => b.media?.shortName && nets.add(b.media.shortName));
+    const comp = (c.competitors || []).slice().sort((a, b) => (a.homeAway === 'away' ? -1 : 1));
+    return {
+      id: ev.id, league: l.label, date: new Date(ev.date), name: ev.name,
+      state: ev.status?.type?.state, detail: ev.status?.type?.shortDetail,
+      teams: comp.map(t => ({ name: t.team?.displayName || t.athlete?.displayName, logo: t.team?.logo, score: t.score, rank: t.curatedRank?.current })),
+      nets: [...nets],
+    };
+  });
+}
+
+async function loadSports(force) {
+  renderLeagueChips();
+  const days = +$('#sportsRange').value;
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const end = new Date(start); end.setDate(end.getDate() + days - 1);
+  const key = [...state.leagues].sort().join(',') + '|' + days;
+  if (!force && sportsCache && key === sportsKey) return renderSports();
+  $('#sportsList').innerHTML = '<div class="spinner">Loading schedules…</div>';
+  const leagues = LEAGUES.filter(l => state.leagues.has(l.id));
+  const results = await Promise.all(leagues.map(l => fetchLeague(l, start, end).catch(() => [])));
+  sportsCache = results.flat().sort((a, b) => a.date - b.date);
+  sportsKey = key;
+  renderSports();
+}
+
+function servicesForNets(nets) {
+  const lower = nets.map(n => n.toLowerCase().trim());
+  return SERVICES.filter(s => state.mine.has(s.id) && s.nets.some(n => lower.includes(n.toLowerCase())));
+}
+
+function renderSports() {
+  const onlyMine = $('#onlyMine').checked, showFinal = $('#showFinal').checked;
+  const tf = $('#teamFilter').value.trim().toLowerCase();
+  const games = (sportsCache || []).filter(g => {
+    if (!showFinal && g.state === 'post') return false;
+    if (tf && !g.teams.some(t => (t.name || '').toLowerCase().includes(tf)) && !g.name.toLowerCase().includes(tf)) return false;
+    g.watch = servicesForNets(g.nets);
+    if (onlyMine && !g.watch.length) return false;
+    return true;
+  });
+  if (!state.leagues.size) { $('#sportsList').innerHTML = '<div class="empty">Pick at least one league above.</div>'; return; }
+  if (!games.length) { $('#sportsList').innerHTML = '<div class="empty">No games match.</div>'; return; }
+  const today = new Date().toDateString();
+  const tmrw = new Date(Date.now() + 864e5).toDateString();
+  let html = '', lastDay = '';
+  for (const g of games) {
+    const ds = g.date.toDateString();
+    if (ds !== lastDay) {
+      lastDay = ds;
+      const label = ds === today ? 'Today' : ds === tmrw ? 'Tomorrow' : g.date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+      html += `<div class="day">${label}</div>`;
+    }
+    const time = g.state === 'in' ? '<span class="badge-live">LIVE</span>' : g.state === 'post' ? 'Final' : g.date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const showScore = g.state !== 'pre';
+    const cls = g.watch.length ? 'watchable' : g.nets.length ? 'unwatchable' : '';
+    html += `<div class="game ${cls}">
+      <div><div class="time">${time}</div><div class="league">${esc(g.league)}</div>${g.state === 'in' ? `<div class="muted">${esc(g.detail)}</div>` : ''}</div>
+      <div class="teams">${g.teams.map(t => `<div class="team">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : ''}${t.rank && t.rank <= 25 ? `<span class="muted">#${t.rank}</span>` : ''}${esc(t.name)}${showScore ? `<span class="score">${esc(t.score)}</span>` : ''}</div>`).join('')}</div>
+      <div class="where">
+        ${g.watch.length ? `<div class="yes">✓ ${esc(g.watch.map(s => s.name).join(', '))}</div>` : g.nets.length ? `<div class="no">Not on your services</div>` : `<div class="no">Broadcast TBD</div>`}
+        ${g.nets.length ? `<div class="nets">📡 ${esc(g.nets.join(' · '))}</div>` : ''}
+      </div></div>`;
+  }
+  $('#sportsList').innerHTML = html;
+}
+$('#sportsRange').onchange = () => loadSports();
+$('#refreshSports').onclick = () => { dayCache.clear(); loadSports(true); };
+['#onlyMine', '#showFinal'].forEach(s => $(s).onchange = renderSports);
+$('#teamFilter').oninput = renderSports;
+
+/* ---------------- Boot ---------------- */
+renderSetup();
+showTab(state.mine.size ? 'catalog' : 'setup');
+</script>
+</body>
+</html>
